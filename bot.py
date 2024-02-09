@@ -10,13 +10,18 @@ from PIL import Image
 import pytesseract
 import requests
 from io import BytesIO
-
+import re
+import openai
+from openai import OpenAI
+import easyocr
 import time
 import os
+from datetime import datetime
 
-username = "Grandma_Susan"
-password = "Grandma_Susan"
+username = "Grandma_Suzan"
+password = "Grandma_Suzan"
 
+reader = easyocr.Reader(['en'], gpu=False)
 
 def initialize_driver():
     # Get the directory of the current script
@@ -29,6 +34,14 @@ def initialize_driver():
     webdriver_service = Service(executable_path=path_to_webdriver)
     driver = webdriver.Edge(service=webdriver_service)
     return driver
+
+def get_current_timestamp_ms():
+    """
+    Returns the current UTC time as a Unix timestamp in milliseconds.
+    """
+    now = datetime.utcnow()
+    timestamp_ms = int(now.timestamp() * 1000)
+    return timestamp_ms
 
 
 def type_like_human(element, text, wpm=100):
@@ -46,13 +59,81 @@ def perform_ocr_text(image_url):
     if response.status_code == 200:
         # Convert the image content directly to an Image object without saving it
         image = Image.open(BytesIO(response.content))
+
+        # Preprocess the image
+        # Convert to grayscale
+        image = image.convert('L')
+        # Apply thresholding
+        threshold = 200
+        image = image.point(lambda p: p > threshold and 255)
+
         # Use pytesseract to perform OCR on the image
-        text = pytesseract.image_to_string(image)
-        print(text)
+        # Specify language if known, e.g., 'eng' for English
+        # Use a custom configuration, e.g., --psm 6 assumes a single uniform block of text
+        text = pytesseract.image_to_string(image, lang='eng')
+
+        print(f"original OCR: {text}")
+        # Replace new lines and carriage returns with a space
+        text = text.replace('\n', ' ').replace('\r', ' ')
+        # Reduce all multiple spaces to a single space
+        text = re.sub(' +', ' ', text)
+
+        print(f"slightly sanitized {text}")
         return text
     else:
         raise Exception("Failed to download the image.")
 
+def process_image_and_query_ai(image_url):
+    """
+    Performs OCR on the given image URL, queries an AI model for a speculative guess of the OCR text,
+    and returns the AI-sanitized text.
+    """
+    # Perform OCR to extract text from the image
+    ocr_text = perform_ocr_text(image_url)  # Ensure this function is correctly defined and imported
+    print("OCR Text:", ocr_text)
+
+    # Construct the prompt for the AI
+    prompt_text = f"Tell me only the ANSWER, no background info - take a speculative guess at what this ocr text is meant to say. Output as markdown so I can easily copy and paste it: {ocr_text}"
+
+    # Initialize the OpenAI client with your API key
+    openai.api_key = 'your_openai_api_key_here'
+
+    # Query the OpenAI API
+    chat_completion = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt_text,
+            }
+        ],
+    )
+
+    # Extracting the response
+    answer = chat_completion.choices[0].message.content
+    print(f"Post AI sanitization: {answer}")
+
+    return answer
+
+def download_file(url, filename=None):
+    """Download a file from a given URL and save it to the script's directory."""
+    # If no filename is given, use the last part of the URL
+    if filename is None:
+        filename = url.split('/')[-1]
+
+    # Get the response from the URL
+    response = requests.get(url)
+    response.raise_for_status()  # Check if the download was successful
+
+    # Define the path to save the file (in the current script's directory)
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    file_path = os.path.join(script_dir, filename)
+
+    # Write the file to the specified path
+    with open(file_path, 'wb') as file:
+        file.write(response.content)
+
+    print(f"File downloaded and saved as {file_path}")
 
 def main():
     global image_url
@@ -107,6 +188,10 @@ def main():
         # Convert to float and calculate 10% more
         current_typing_speed = float(current_typing_speed_str)
         adjusted_typing_speed = int(current_typing_speed * 1.13)  # Increase by 12%
+
+        if adjusted_typing_speed == 0:
+            adjusted_typing_speed = 300
+
     except ValueError:
         # Fallback speed if there's an issue parsing the speed
         adjusted_typing_speed = 100  # Default or fallback typing speed
@@ -130,7 +215,7 @@ def main():
         text_to_type = div_with_text.text
         print("Extracted text to type:", text_to_type)
 
-        input_field = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'txtInput')))
+        input_field = WebDriverWait(driver, 15).until(EC.element_to_be_clickable((By.CLASS_NAME, 'txtInput')))
         type_like_human(input_field, text_to_type, adjusted_typing_speed)
     except Exception as e:
         print(f"Error encountered: {e}")
@@ -143,7 +228,10 @@ def main():
         )
         # If the button is found, click it or continue with the script
         time.sleep(5)
+        input("Captcha required, press Enter to continue...")
         begin_test_button.click()
+        timestamp = get_current_timestamp_ms()
+
         print("Begin Test button found and clicked.")
         # Assuming you reach the point where you need to call OCR
         # Locate the image
@@ -160,22 +248,69 @@ def main():
             # src_attribute = image_element.get_attribute('src')
             challenge_id = src_attribute.split('=')[1]  # Assuming 'src' format is 'challenge?id=XYZ'
             image_url = f"https://play.typeracer.com/challenge?id={challenge_id}"
+            timestamp_image_url = f"https://play.typeracer.com/challenge?id={timestamp}+tr:Grandma_Suzan"
+            print("Timestamped Image URL:", timestamp_image_url)
             print("Constructed Image URL:", image_url)
+
+            file_path = 'list_of_challenges.txt'
+            # Open the file in append mode and write the image_url to it
+            with open(file_path, 'a') as file:
+                file.write(image_url + '\n')  # Append the URL and a newline character to the file
+
         except TimeoutException:
             print("Failed to find the image within the timeout period.")
 
         try:
-            ocr_text = perform_ocr_text(image_url)  # Ensure this function is correctly defined and imported
-            print("OCR Text:", ocr_text)
-            # Now use this text to type out using the predetermined speed logic
-            input("Captcha required, press Enter to continue...")
-            input_field_ocr = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'txtInput')))
-            type_like_human(input_field_ocr, ocr_text, adjusted_typing_speed)
+            # if you want to try with AI
+            # ai_sanitized_text = process_image_and_query_ai(image_url)
+            # print(ai_sanitized_text)
+            # sanitized_text = perform_ocr_text(image_url)
 
+            response = requests.get(image_url)
+
+            # Check if the request was successful
+            if response.status_code == 200:
+                # Assuming the content you are downloading is a text file, or similar.
+                # You might need to adjust the code for other types of files (e.g., binary data)
+                content = response.content
+
+                # Define the local filename to save the downloaded file
+                filename = 'image1.jpeg'  # Adjust the file extension based on the content type
+
+                # Open file in binary write mode and save the content
+                with open(filename, 'wb') as file:
+                    file.write(content)
+
+                print(f'File downloaded successfully and saved as {filename}')
+            else:
+                print('Failed to download the file. Status code:', response.status_code)
+
+            file_path = download_file(image_url)
+            image_path = "image1.jpeg"
+
+            result = reader.readtext(image_path, detail=0)
+
+            print(f"initial output: {result}")
+
+            # OCR output
+            ocr_output = result
+
+            # Concatenate text segments into a single string
+            raw_text = ' '.join(ocr_output)
+            print(f"cleaned output: {result}")
+
+            input_field_ocr = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CLASS_NAME, 'challengeTextArea')))
+            type_like_human(input_field_ocr, raw_text, adjusted_typing_speed)
+
+            input("Press Enter to close the browser and exit the script...")
         except Exception as e:
             print(f"Error encountered: {e}")
+
     except Exception as e:
         print(f"Unexpected error: {e}")
+        input("Press Enter to close the browser and exit the script...")
+        driver.quit()
 
     except Exception as e:
         input("Press Enter to close the browser and exit the script...")
