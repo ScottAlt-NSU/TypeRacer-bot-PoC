@@ -10,6 +10,7 @@ import pytesseract
 import requests
 from PIL import Image
 from fuzzywuzzy import process
+from nltk.corpus import words
 from selenium import webdriver
 from selenium.common import TimeoutException
 from selenium.webdriver.common.action_chains import ActionChains
@@ -18,7 +19,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from operator import itemgetter
+from textblob import TextBlob
 
 username = "Grandma_Suzan"
 password = "Grandma_Suzan"
@@ -281,7 +282,7 @@ def main():
         )
         # If the button is found, click it or continue with the script
         time.sleep(5)
-        input("Captcha required, press Enter to continue...")
+        # input("Captcha required, press Enter to continue...")
         begin_test_button.click()
         timestamp = get_current_timestamp_ms()
 
@@ -328,7 +329,16 @@ def main():
                 content = response.content
 
                 # Define the local filename to save the downloaded file
+                directory = 'images/training'
+
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+
                 filename = 'image1.jpeg'  # Adjust the file extension based on the content type
+                filename2 = f'image_{timestamp}.jpeg'
+                file_path = os.path.join(directory, filename2)
+
+                with open(file_path, 'wb') as file:
+                    file.write(content)
 
                 # Open file in binary write mode and save the content
                 with open(filename, 'wb') as file:
@@ -356,21 +366,34 @@ def main():
 
             print(f"cleaned output V2: {cleaned_text}")
 
+            words = cleaned_text.split()
+
+            corrected_words = []
+            for word in words:
+                corrected_word = TextBlob(word)
+                # Using the corrected spelling of the word
+                corrected_words.append(str(corrected_word.correct()))
+
+            # Joining the corrected words back into a full sentence
+            corrected_text = ' '.join(corrected_words)
+
+            print(f"Autocorrected output: {corrected_text}")
+
             transcript_file = "alice.txt"
 
-            extracted_text = extract_similar_length_text_from_words(raw_text, transcript_file)
+            extracted_text = extract_similar_length_text_from_words(corrected_text, transcript_file)
 
             if extracted_text:
                 print(f"Extracted text from transcript: {extracted_text}")
                 input_field_ocr = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.CLASS_NAME, 'challengeTextArea')))
-                type_like_human(input_field_ocr, raw_text, adjusted_typing_speed)
+                type_like_human(input_field_ocr, extracted_text, adjusted_typing_speed)
             else:
                 print("The first three words of the OCR text were not found in the transcript.")
 
                 input_field_ocr = WebDriverWait(driver, 10).until(
                     EC.element_to_be_clickable((By.CLASS_NAME, 'challengeTextArea')))
-                type_like_human(input_field_ocr, raw_text, adjusted_typing_speed)
+                type_like_human(input_field_ocr, corrected_text, adjusted_typing_speed)
 
         except:
 
