@@ -1,27 +1,30 @@
-from selenium import webdriver
-from selenium.common import TimeoutException
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.edge.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from PIL import Image
+import os
+import re
+import time
+from datetime import datetime
+from io import BytesIO
+
+import easyocr
+import openai
 import pytesseract
 import requests
-from io import BytesIO
-import re
-import openai
-from openai import OpenAI
-import easyocr
-import time
-import os
-from datetime import datetime
+from PIL import Image
+from fuzzywuzzy import process
+from selenium import webdriver
+from selenium.common import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.edge.service import Service
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from operator import itemgetter
 
 username = "Grandma_Suzan"
 password = "Grandma_Suzan"
 
 reader = easyocr.Reader(['en'], gpu=False)
+
 
 def initialize_driver():
     # Get the directory of the current script
@@ -34,6 +37,53 @@ def initialize_driver():
     webdriver_service = Service(executable_path=path_to_webdriver)
     driver = webdriver.Edge(service=webdriver_service)
     return driver
+
+
+def extract_similar_length_text_from_words(ocr_text, transcript_path):
+    # Open and read the transcript file
+    with open(transcript_path, 'r', encoding='utf-8') as file:
+        transcript = file.read()
+
+    # Extract the first two words from the OCR text
+    first_three_words = ' '.join(ocr_text.split()[:3])
+
+    # Search for the first occurrence of these words in the transcript
+    start_index = transcript.find(first_three_words)
+
+    if start_index != -1:
+        # Calculate the end index based on the length of the OCR text
+        end_index = start_index + len(ocr_text)
+
+        # Extract the corresponding text from the transcript
+        extracted_text = transcript[start_index:end_index]
+
+        return extracted_text
+    else:
+        # Return None or an appropriate response if the substring is not found
+        return None
+
+def find_best_match_in_transcript(ocr_text, transcript_path):
+    """
+    Finds the best match for the OCR text in the transcript and returns the matching transcript text.
+
+    :param ocr_text: The text extracted from OCR.
+    :param transcript_path: Path to the transcript file.
+    :return: Best matching sentence from the transcript.
+    """
+    # Load the transcript
+    with open(transcript_path, 'r', encoding='utf-8') as file:
+        transcript = file.read()
+
+    # Split the transcript into sentences
+    sentences = transcript.split(
+        '.')  # This is a simple split, you might need a more sophisticated sentence tokenizer for complex texts
+
+    # Find the best match for the OCR text in the transcript sentences
+    best_match, score = process.extractOne(ocr_text, sentences)
+
+    # Return the best matching sentence
+    return best_match.strip()
+
 
 def get_current_timestamp_ms():
     """
@@ -83,6 +133,7 @@ def perform_ocr_text(image_url):
     else:
         raise Exception("Failed to download the image.")
 
+
 def process_image_and_query_ai(image_url):
     """
     Performs OCR on the given image URL, queries an AI model for a speculative guess of the OCR text,
@@ -115,6 +166,7 @@ def process_image_and_query_ai(image_url):
 
     return answer
 
+
 def download_file(url, filename=None):
     """Download a file from a given URL and save it to the script's directory."""
     # If no filename is given, use the last part of the URL
@@ -134,6 +186,7 @@ def download_file(url, filename=None):
         file.write(response.content)
 
     print(f"File downloaded and saved as {file_path}")
+
 
 def main():
     global image_url
@@ -297,25 +350,35 @@ def main():
 
             # Concatenate text segments into a single string
             raw_text = ' '.join(ocr_output)
-            print(f"cleaned output: {result}")
+            print(f"cleaned output: {raw_text}")
 
-            input_field_ocr = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CLASS_NAME, 'challengeTextArea')))
-            type_like_human(input_field_ocr, raw_text, adjusted_typing_speed)
+            cleaned_text = re.sub(r'[~()_{}\[\]|\\/]', '', raw_text)
+
+            print(f"cleaned output V2: {cleaned_text}")
+
+            transcript_file = "alice.txt"
+
+            extracted_text = extract_similar_length_text_from_words(raw_text, transcript_file)
+
+            if extracted_text:
+                print(f"Extracted text from transcript: {extracted_text}")
+                input_field_ocr = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CLASS_NAME, 'challengeTextArea')))
+                type_like_human(input_field_ocr, raw_text, adjusted_typing_speed)
+            else:
+                print("The first three words of the OCR text were not found in the transcript.")
+
+                input_field_ocr = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CLASS_NAME, 'challengeTextArea')))
+                type_like_human(input_field_ocr, raw_text, adjusted_typing_speed)
+
+        except:
 
             input("Press Enter to close the browser and exit the script...")
-        except Exception as e:
-            print(f"Error encountered: {e}")
 
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        input("Press Enter to close the browser and exit the script...")
-        driver.quit()
+    finally:
 
-    except Exception as e:
-        input("Press Enter to close the browser and exit the script...")
-        driver.quit()
-
+            input("Press Enter to close the browser and exit the script...")
 
 if __name__ == "__main__":
     main()
