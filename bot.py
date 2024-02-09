@@ -1,4 +1,5 @@
 from selenium import webdriver
+from selenium.common import TimeoutException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.edge.service import Service
@@ -54,6 +55,7 @@ def perform_ocr_text(image_url):
 
 
 def main():
+    global image_url
     driver = initialize_driver()
     # Your existing code to navigate and interact with the web page
     driver = initialize_driver()
@@ -145,21 +147,35 @@ def main():
         print("Begin Test button found and clicked.")
         # Assuming you reach the point where you need to call OCR
         # Locate the image
-        image_element = driver.find_element_by_xpath("//img[contains(@src, 'challenge?id=')]")
-        image_url = image_element.get_attribute('src')
-        print("Image URL:", image_url)
-
+        time.sleep(1)
 
         try:
-            ocr_text = perform_ocr_text(image_url)
+            image_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "challengeImg"))
+            )
+            src_attribute = image_element.get_attribute('src')
+            # print("Image SRC attribute:", src_attribute)
+            # input("Captcha required, press Enter to continue...")
+
+            # src_attribute = image_element.get_attribute('src')
+            challenge_id = src_attribute.split('=')[1]  # Assuming 'src' format is 'challenge?id=XYZ'
+            image_url = f"https://play.typeracer.com/challenge?id={challenge_id}"
+            print("Constructed Image URL:", image_url)
+        except TimeoutException:
+            print("Failed to find the image within the timeout period.")
+
+        try:
+            ocr_text = perform_ocr_text(image_url)  # Ensure this function is correctly defined and imported
             print("OCR Text:", ocr_text)
             # Now use this text to type out using the predetermined speed logic
+            input("Captcha required, press Enter to continue...")
             input_field_ocr = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'txtInput')))
             type_like_human(input_field_ocr, ocr_text, adjusted_typing_speed)
 
         except Exception as e:
             print(f"Error encountered: {e}")
-
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
     except Exception as e:
         input("Press Enter to close the browser and exit the script...")
