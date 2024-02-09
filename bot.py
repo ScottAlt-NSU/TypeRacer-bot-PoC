@@ -15,7 +15,7 @@ def initialize_driver():
 
 def type_like_human(element, text, wpm=100):
     char_per_minute = wpm * 5
-    delay = 60 / char_per_minute
+    delay = 30 / char_per_minute
     for char in text:
         element.send_keys(char)
         time.sleep(delay)
