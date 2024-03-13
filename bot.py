@@ -21,8 +21,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from textblob import TextBlob
 
-username = "Grandma_Suzan"
-password = "Grandma_Suzan"
+username = "" # Input your username
+password = "" # Input your password. Don't use a password you use anywhere else.
 
 reader = easyocr.Reader(['en'], gpu=False)
 
