@@ -20,7 +20,10 @@ This code is provided for educational and ethical testing purposes only. It is t
 I plan to engage in a responsible disclosure process with TypeRacer, sharing my findings in a manner that allows them to address the demonstrated vulnerabilities without putting their users at risk. This process is guided by the principle of minimizing potential harm and contributing to the overall security of the internet.
 Conclusion
 
-This PoC highlights the importance of continuous security assessments and the need for implementing robust measures to detect and prevent automated attacks. By sharing these findings, I hope to encourage TypeRacer and similar platforms to strengthen their defenses, thereby creating a safer and more secure online environment for all users.DISCLAIMER: THIS IS A PoC FOR Typeracer. Do not misuse. 
+This PoC highlights the importance of continuous security assessments and the need for implementing robust measures to detect and prevent automated attacks. By sharing these findings, I hope to encourage TypeRacer and similar platforms to strengthen their defenses, thereby creating a safer and more secure online environment for all users.
+
+
+## Background and Usage
 
 Type Racer is a website available here: https://play.typeracer.com/ where you can practice your typing speed online by racing against others. 
 
