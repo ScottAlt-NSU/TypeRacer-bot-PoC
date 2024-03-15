@@ -27,7 +27,7 @@ This PoC highlights the importance of continuous security assessments and the ne
 
 Type Racer is a website available here: https://play.typeracer.com/ where you can practice your typing speed online by racing against others. 
 
-I had a theory that it would be possible to write an exploit utilizing python that would be able to type any given text as a bot, simulating the speed of a human. If the speed is over 20% of your average, you will then be prompted with a Captcha. I believed that I would be able to beat the captcha utilizing AI, OCR technologies, and the same typing method. This proved true.
+I had a theory that it would be possible to write an exploit utilizing python that would be able to type any given text as a bot, simulating the speed of a human. If the speed is over 20% of your average, you will then be prompted with a Captcha. I believed that I would be able to beat the captcha utilizing AI, OCR technologies, utilizing the same typing method. This proved true.
 
 I experimented with AI to solve the captchas and various other OCR tech, and ended up utilizing a previously trained LLM that was designed to read captchas. I could have improved this further but it was becoming a time sink. 
 
