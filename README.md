@@ -42,4 +42,4 @@ Preequiste: Ensure you have the msedgedriver in the root folder. This ensures th
 3. When running on auto speed, it will detect the speed that is displayed as the accounts average when logging in, and then apply a 15% increase to avoid detection.
 4. Keep running the script and the speed will slowly start to increase in small increments.
 
-Finally, I  know that similar bots have been built before. This project was undertaken in an effort to show how AI can be used to bypass captcha.
+Finally, I  know that similar bots have been built before. This project was undertaken in an effort to show how AI and today's LLMs can be used to bypass captchas.
