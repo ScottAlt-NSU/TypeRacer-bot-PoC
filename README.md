@@ -29,7 +29,7 @@ Type Racer is a website available here: https://play.typeracer.com/ where you ca
 
 I had a theory that it would be possible to write an exploit utilizing python that would be able to type any given text as a bot, simulating the speed of a human. If the speed is over 20% of your average, you will then be prompted with a Captcha. I believed that I would be able to beat the captcha utilizing AI, OCR technologies, utilizing the same typing method. This proved true.
 
-I experimented with AI to solve the captchas and various other OCR tech, and ended up utilizing a previously trained LLM that was designed to read captchas. I could have improved this further but it was becoming a time sink. 
+I experimented with AI to solve the captchas and various other OCR tech, and ended up utilizing a previously trained LLM that was designed to read captchas. 
 
 The script also automatically adjusts the speed so that it only ever types 15% faster than your previous top speed to avoid detection. I plan to responsibly disclose this shortly, as there are ways to prevent this type of attack. 
 
